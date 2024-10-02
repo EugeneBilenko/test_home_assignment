@@ -15,6 +15,9 @@
                     @endif
 
                     {{ __('You are logged in!') }}
+                    @if(Auth::user()->role->role == 'manager')
+                            <a href="/users/create">{{ __('Add employee') }}</a>
+                    @endif
                 </div>
             </div>
         </div>

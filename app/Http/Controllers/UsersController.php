@@ -4,6 +4,7 @@
 namespace App\Http\Controllers;
 
 
+use App\Jobs\SendEmployeeCreatedEmailJob;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -22,15 +23,23 @@ class UsersController
             return response()->json(['error' => 'you are not allowed to view employees']);
         }
 
-        $users = User::where('role_id', '!=', Role::managerRole())->paginate(10);
+        $users = User::where('employer_id', Auth::id())->paginate(10);
 
-        return response()->json($users);
+        if ($request->is('api/*')) {
+            return response()->json($users);
+        }
+
+        return view('pages.users.list', compact('users'));
     }
 
     public function create(Request $request)
     {
         if (Auth::user()->role->role !== 'manager') {
             return response()->json(['error' => 'you not allowed to create employees']);
+        }
+
+        if ($request->method() != "POST") {
+            return view('pages.users.create');
         }
 
         $data = $request->validate([
@@ -48,10 +57,15 @@ class UsersController
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'role_id' => $role_id ?? null,
+            'employer_id' => Auth::id(),
         ]);
 
         if ($user) {
-            return response()->json($user);
+            SendEmployeeCreatedEmailJob::dispatch($user->id);
+            if ($request->is('api/*')) {
+                return response()->json($user);
+            }
+            return redirect()->route('users.index');
         }
 
         return response()->json(['error' => 'user was not created']);

@@ -21,4 +21,9 @@ class Record extends Model
         'category',
         'user_id',
     ];
+
+    public function recordCategory()
+    {
+        return $this->belongsTo(Category::class, 'category', 'id');
+    }
 }

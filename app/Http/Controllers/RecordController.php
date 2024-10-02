@@ -13,15 +13,40 @@ class RecordController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        if (Auth::user()->role->role !== 'manager') {
-            return response()->json(['error' => 'you can not see records']);
+        $allowed_records_owners = [];
+
+        if (Auth::user()->role->role == 'manager') {
+            $allowed_records_owners = Auth::user()->employees()->pluck('id')->toArray();
         }
 
-        $records = Record::paginate(10);
+        array_push( $allowed_records_owners, Auth::id());
+        $records = Record::with('recordCategory')
+                        ->whereIn('user_id', $allowed_records_owners)
+                        ->paginate(10);
 
-        return response()->json($records);
+        if ($request->is('api/*')) {
+            return response()->json($records);
+        }
+
+        return view('pages.records.list', compact('records'));
+    }
+
+    /**
+     * Display a listing of the resource.
+     */
+    public function list(Request $request, $id)
+    {
+        $records = Record::with('recordCategory')
+                        ->where('user_id', $id)
+                        ->paginate(10);
+
+        if ($request->is('api/*')) {
+            return response()->json($records);
+        }
+
+        return view('pages.records.employee_list', compact('records'));
     }
 
     /**
@@ -34,12 +59,14 @@ class RecordController extends Controller
         }
 
         if ($request->method() !== 'POST') {
-            $categories = Category::pluck('category');
+            $categories = Category::select('category', 'id')->get();
+
+            return view('pages.records.create', compact('categories'));
         }
 
         $valid = self::validating($request, [
             'name' => 'sometimes|nullable|string|max:255',
-            'category' => 'sometimes|nullable|string',
+            'category' => 'sometimes|nullable|numeric',
             'image' => 'required|file|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 
@@ -61,7 +88,11 @@ class RecordController extends Controller
         ]);
 
         if ($record) {
-            return response()->json($record);
+            if ($request->is('api/*')) {
+                return response()->json($record);
+            }
+
+            return redirect()->route('records.index');
         }
 
         return response()->json(['error' => 'record was not created']);
@@ -70,12 +101,16 @@ class RecordController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit($id)
+    public function edit(Request $request, $id)
     {
         $record = Record::findOrFail($id);
 
         if ($record) {
-            return response()->json($record);
+            $categories = Category::select('category', 'id')->get();
+            if ($request->is('api/*')) {
+                return response()->json(compact('record', 'categories'));
+            }
+            return view('pages.records.edit', compact('record', 'categories'));
         }
 
         return response()->json(['error' => 'record not found']);
@@ -111,7 +146,11 @@ class RecordController extends Controller
 
         $record->save();
 
-        return response()->json(['success' => 'Record updated.', 'record' => $record]);
+        if ($request->is('api/*')) {
+            return response()->json(['success' => 'Record updated.', 'record' => $record]);
+        }
+
+        return redirect()->route('records.index');
     }
 
     /**
@@ -126,6 +165,18 @@ class RecordController extends Controller
         }
 
         return response()->json(['error' => 'Record not deleted.']);
+    }
+
+    /**
+     * @param $request
+     */
+    private static function responseByType($request, $data_to_return, $page = 'list')
+    {
+        if ($request->is('api/*')) {
+            return response()->json($data_to_return);
+        }
+
+        return view('pages.records.'.$page, $data_to_return);
     }
 
     /**

@@ -33,7 +33,7 @@ class Handler extends ExceptionHandler
     {
         if ($exception instanceof MethodNotAllowedHttpException) {
             return response()->json([
-                'message' => 'Method not allowed. Please check the HTTP method you are using.',
+                'error' => 'Method not allowed. Please check the HTTP method you are using.',
                 'allowed_methods' => $exception->getHeaders()['Allow'] ?? null,
             ], 405);
         }
