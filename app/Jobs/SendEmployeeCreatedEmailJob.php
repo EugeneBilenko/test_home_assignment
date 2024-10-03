@@ -30,6 +30,6 @@ class SendEmployeeCreatedEmailJob implements ShouldQueue
      */
     public function handle(): void
     {
-        Mail::to($this->user->email)->send(new EmployeeCreated($this->user));
+        Mail::to($this->user->email)->send(new EmployeeCreated($this->user->id));
     }
 }

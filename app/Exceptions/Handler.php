@@ -38,6 +38,8 @@ class Handler extends ExceptionHandler
             ], 405);
         }
 
-        return parent::render($request, $exception);
+        return response()->json([
+            'error' => 'Check your actions and retry.',
+        ], 406);
     }
 }
